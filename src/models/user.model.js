@@ -26,7 +26,6 @@ class UserModel {
         uid,
         username,
         email,
-        password,
       };
     } catch (error) {
       console.error("Error en register en user.mode.js: ", error.message);
