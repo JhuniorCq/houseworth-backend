@@ -32,6 +32,29 @@ class UserModel {
       throw error;
     }
   }
+
+  static async login({ uid }) {
+    try {
+      const [user] = await pool.query("SELECT * FROM user WHERE user_id = ?", [
+        uid,
+      ]);
+
+      if (user.length === 0) {
+        throw new Error("Este usuario no existe.");
+      }
+
+      console.log("El usuario es: ", user);
+
+      return {
+        uid: user[0].user_id,
+        username: user[0].username,
+        email: user[0].email,
+      };
+    } catch (error) {
+      console.error("Error en login en user.model.js: ", error.message);
+      throw error;
+    }
+  }
 }
 
 export default UserModel;
