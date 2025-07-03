@@ -55,6 +55,29 @@ class UserModel {
       throw error;
     }
   }
+
+  static async getById({ uid }) {
+    try {
+      const [user] = await pool.query("SELECT * FROM user WHERE user_id = ?", [
+        uid,
+      ]);
+
+      if (user.length === 0) {
+        const error = new Error("Este usuario no existe.");
+        error.status = 404;
+        throw error;
+      }
+
+      delete user[0].user_id;
+      delete user[0].password;
+      user[0].uid = uid;
+
+      return user[0];
+    } catch (error) {
+      console.error("Error en getById en user.model.js: ", error.message);
+      throw error;
+    }
+  }
 }
 
 export default UserModel;

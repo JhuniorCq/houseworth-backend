@@ -53,6 +53,23 @@ class UserController {
       next(error);
     }
   }
+
+  static async getById(req, res, next) {
+    try {
+      const { uid } = req.params;
+
+      const user = await UserModel.getById({ uid });
+
+      res.status(200).json({
+        success: true,
+        message: "Usuario obtenido exitosamente.",
+        data: user,
+      });
+    } catch (error) {
+      console.error("Error en getById en user.controller.js: ", error.message);
+      next(error);
+    }
+  }
 }
 
 export default UserController;
