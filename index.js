@@ -3,6 +3,7 @@ import { SERVER_HOST, SERVER_PORT } from "./src/config/config.js";
 import morgan from "morgan";
 import cors from "cors";
 import userRouter from "./src/routes/user.routes.js";
+import predictionRouter from "./src/routes/prediction.route.js";
 import handleError from "./src/middlewares/error.middleware.js";
 import handleError404 from "./src/middlewares/error404.middleware.js";
 
@@ -20,6 +21,7 @@ app.use(morgan("dev"));
 
 // Rutas
 app.use("/user", userRouter);
+app.use("/prediction", predictionRouter);
 
 // Middleware -> Error 404
 app.use(handleError404);

@@ -12,3 +12,6 @@ export const DATA_BASE = {
 
 // SALT ROUNDS
 export const SALT_ROUNDS = Number(process.env.SALT_ROUNDS);
+
+// IA
+export const SERVER_IA = process.env.SERVER_IA;
