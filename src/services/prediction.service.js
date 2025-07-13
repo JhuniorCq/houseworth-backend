@@ -11,3 +11,15 @@ export const makePrediction = async (features) => {
     throw new Error("No se pudo obtener la predicción del modelo.");
   }
 };
+
+export const makePredictions = async (featuresList) => {
+  try {
+    const responses = await Promise.all(
+      featuresList.map((features) =>
+        axios.post(`${SERVER_IA}/predict`, features)
+      )
+    );
+
+    return responses.map((r) => r.data);
+  } catch (error) {}
+};

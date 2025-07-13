@@ -19,7 +19,9 @@
     "dayjs": "1.11.13",
     "express": "5.1.0",
     "firebase-admin": "13.4.0",
-    "mysql2": "3.14.1"
+    "multer": "2.0.1",
+    "mysql2": "3.14.1",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "morgan": "1.10.0"
