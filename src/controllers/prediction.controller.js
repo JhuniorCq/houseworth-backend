@@ -55,10 +55,8 @@ class PredictionController {
   }
 
   static async predictMultiplePrices(req, res, next) {
-    // TODO: Validar que el archivo que se recibe es un Excel
     try {
       const { uid } = req.token;
-      // const uid = "hmKTa1LsxpeFqpxTYoY0zEIjXk93";
 
       const excelBuffer = req.file.buffer;
       const workbook = read(excelBuffer, { type: "buffer" });
@@ -69,11 +67,6 @@ class PredictionController {
       const rows = utils.sheet_to_json(sheet);
 
       const firstRow = rows[0];
-
-      // TODO: Hacer que el back revise que los valores de cada columna sean los correctos -> En especial de neighborhood y overallQual
-      // TODO: Luego validar que el excel solo contenga las columnas solicitadas
-      // TODO: Hacer que desde un comienzo las columnas que vienen pasen por el .trim() para quitarle los espacios, y estos valores resultantes para las nuevas columans son los que tendré de manera fija hasta el final
-      console.log(firstRow);
 
       if (!firstRow) {
         const error = new Error("El archivo excel está vacío.");
