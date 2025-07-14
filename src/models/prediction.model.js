@@ -213,7 +213,8 @@ class PredictionModel {
       );
 
       const [multipleAmountResult] = await pool.query(
-        "SELECT COUNT(*) AS multipleAmount FROM excel"
+        "SELECT COUNT(DISTINCT excel_id) AS multipleAmount FROM prediction WHERE user_id = ? AND excel_id IS NOT NULL",
+        [uid]
       );
 
       const predictions = result.map((p) => {
