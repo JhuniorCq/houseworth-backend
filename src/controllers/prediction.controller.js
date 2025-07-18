@@ -6,7 +6,7 @@ import {
 } from "../services/prediction.service.js";
 import { prepareFeatures } from "../utils/prepareFeatures.js";
 import { read, utils } from "xlsx";
-import { EXPECTED_COLUMNS_EXCEL } from "../utils/constants.js";
+import { areTheExactColumns, itIsAnExcelFile } from "../utils/predictions.js";
 
 class PredictionController {
   static async predictPrice(req, res, next) {
@@ -54,13 +54,18 @@ class PredictionController {
     }
   }
 
+  // TODO: Hacer que el back revise que los valores de cada columna sean los correctos -> En especial de neighborhood y overallQual
+  // TODO: Se puede agregarvalidación con Zod para cada Fila del excel
   static async predictMultiplePrices(req, res, next) {
-    // TODO: Validar que el archivo que se recibe es un Excel
     try {
       const { uid } = req.token;
 
+      // Validación del tipo de archivo
+      itIsAnExcelFile(req.file.mimetype);
+
       const excelBuffer = req.file.buffer;
       const workbook = read(excelBuffer, { type: "buffer" });
+      const excelName = req.file.originalname;
 
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
@@ -68,11 +73,6 @@ class PredictionController {
       const rows = utils.sheet_to_json(sheet);
 
       const firstRow = rows[0];
-
-      // TODO: Hacer que el back revise que los valores de cada columna sean los correctos -> En especial de neighborhood y overallQual
-      // TODO: Luego validar que el excel solo contenga las columnas solicitadas
-      // TODO: Hacer que desde un comienzo las columnas que vienen pasen por el .trim() para quitarle los espacios, y estos valores resultantes para las nuevas columans son los que tendré de manera fija hasta el final
-      console.log(firstRow);
 
       if (!firstRow) {
         const error = new Error("El archivo excel está vacío.");
@@ -83,22 +83,7 @@ class PredictionController {
 
       // Validar la existencia de las columnas solicitadas
       const actualColumns = Object.keys(firstRow);
-      const missingColumns = EXPECTED_COLUMNS_EXCEL.filter(
-        (col) => !actualColumns.includes(col)
-      );
-
-      if (missingColumns.length > 0) {
-        const error = new Error(
-          `El archivo excel no contiene las siguientes columnas requeridas: ${missingColumns.join(
-            ", "
-          )}.`
-        );
-        error.status = 400;
-
-        throw error;
-      }
-
-      console.log(rows);
+      areTheExactColumns(actualColumns);
 
       // Realizar la predicción de cada vivienda
       const featuresList = rows.map((row) => prepareFeatures({ ...row }));
@@ -137,6 +122,7 @@ class PredictionController {
 
       const resultsPredictions = await PredictionModel.predictMultiplePrices({
         uid,
+        excelName,
         predictionData,
       });
 
@@ -156,11 +142,54 @@ class PredictionController {
     }
   }
 
+  static async getById(req, res, next) {
+    try {
+      const { uid } = req.token;
+      const { id } = req.params;
+
+      const predictionResult = await PredictionModel.getById({ uid, id });
+
+      res.status(200).json({
+        success: true,
+        message: "Predicción obtenida con éxito.",
+        data: predictionResult,
+      });
+    } catch (error) {
+      console.error(
+        "Error en getById en prediction.controller.js: ",
+        error.message
+      );
+      next(error);
+    }
+  }
+
+  static async getByExcelId(req, res, next) {
+    try {
+      const { uid } = req.token;
+      const { excelId } = req.params;
+
+      const predictionResults = await PredictionModel.getByExcelId({
+        uid,
+        excelId,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Predicciones obtenidas con éxito.",
+        data: predictionResults,
+      });
+    } catch (error) {
+      console.error(
+        "Error en getByExcelId en prediction.controller.js: ",
+        error.message
+      );
+      next(error);
+    }
+  }
+
   static async listAll(req, res, next) {
     try {
       const { uid } = req.token;
-      // const uid = "hmKTa1LsxpeFqpxTYoY0zEIjXk93"; // Para pruebas
-
       let { limit } = req.query;
 
       limit = limit && Number(limit) ? Number(limit) : undefined;

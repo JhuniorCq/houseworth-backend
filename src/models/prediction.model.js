@@ -75,7 +75,7 @@ class PredictionModel {
     }
   }
 
-  static async predictMultiplePrices({ uid, predictionData }) {
+  static async predictMultiplePrices({ uid, excelName, predictionData }) {
     let connection;
 
     try {
@@ -85,8 +85,8 @@ class PredictionModel {
 
       // Registro la cantidad de filas del excel
       const [excelResult] = await connection.query(
-        "INSERT INTO excel (amount_rows) VALUES (?)",
-        [predictionData.length]
+        "INSERT INTO excel (amount_rows, name) VALUES (?, ?)",
+        [predictionData.length, excelName]
       );
 
       const excelId = excelResult.insertId;
@@ -149,6 +149,7 @@ class PredictionModel {
           predictionDate,
           predictionTime,
           excelId, // El excelId es el mismo para todas las predicciones
+          excelName, // El excelName es el mismo para todas las predicciones
         };
       });
 
@@ -170,9 +171,10 @@ class PredictionModel {
     }
   }
 
-  static async listAll({ uid, limit }) {
+  // Obtener una predicción simple
+  static async getById({ uid, id }) {
     try {
-      let query = `SELECT
+      const query = `SELECT
                       prediction_id AS id, 
                       price,
                       gr_liv_area AS grLivArea,
@@ -187,7 +189,110 @@ class PredictionModel {
                       excel_id AS excelId
                     FROM prediction 
                     WHERE user_id = ?
-                    ORDER BY createdAt DESC`;
+                    AND prediction_id = ?`;
+
+      const values = [uid, id];
+
+      const [result] = await pool.query(query, values);
+
+      if (result.length === 0) {
+        throw new Error("Predicción no encontrada.");
+      }
+
+      const prediction = { ...result[0] };
+
+      const [predictionDate, predictionTime] = dayjs(prediction.createdAt)
+        .format("YYYY-MM-DD HH:mm:ss")
+        .split(" ");
+
+      delete prediction.createdAt;
+
+      return {
+        ...prediction,
+        predictionDate,
+        predictionTime,
+      };
+    } catch (error) {
+      console.error("Error en getById en prediction.model.js: ", error.message);
+      throw error;
+    }
+  }
+
+  static async getByExcelId({ uid, excelId }) {
+    try {
+      const query = `SELECT
+                      p.prediction_id AS id, 
+                      p.price,
+                      p.gr_liv_area AS grLivArea,
+                      p.garage_cars AS garageCars,
+                      p.total_bsmt_sf AS totalBsmtSF,
+                      p.year_built AS yearBuilt,
+                      p.overall_qual AS overallQual,
+                      p.neighborhood AS neighborhood,
+                      p.is_modern AS isModern,
+                      p.is_luxury AS isLuxury,
+                      p.created_at AS createdAt,
+                      p.excel_id AS excelId,
+                      e.name AS excelName
+                    FROM prediction p
+                    INNER JOIN excel e 
+                    ON p.excel_id = e.excel_id
+                    WHERE p.user_id = ?
+                    AND p.excel_id = ?`;
+
+      const values = [uid, excelId];
+
+      const [result] = await pool.query(query, values);
+
+      if (result.length === 0) {
+        throw new Error("Predicciones no encontradas.");
+      }
+
+      const predictions = result.map((p) => {
+        const [predictionDate, predictionTime] = dayjs(p.createdAt)
+          .format("YYYY-MM-DD HH:mm:ss")
+          .split(" ");
+
+        delete p.createdAt;
+
+        return {
+          ...p,
+          predictionDate,
+          predictionTime,
+        };
+      });
+
+      return predictions;
+    } catch (error) {
+      console.error(
+        "Error en getByExcelId en prediction.model.js: ",
+        error.message
+      );
+      throw error;
+    }
+  }
+
+  static async listAll({ uid, limit }) {
+    try {
+      let query = `SELECT
+                    p.prediction_id AS id, 
+                    p.price,
+                    p.gr_liv_area AS grLivArea,
+                    p.garage_cars AS garageCars,
+                    p.total_bsmt_sf AS totalBsmtSF,
+                    p.year_built AS yearBuilt,
+                    p.overall_qual AS overallQual,
+                    p.neighborhood AS neighborhood,
+                    p.is_modern AS isModern,
+                    p.is_luxury AS isLuxury,
+                    p.created_at AS createdAt,
+                    p.excel_id AS excelId,
+                    e.name AS excelName
+                  FROM prediction p
+                  LEFT JOIN excel e 
+                  ON p.excel_id = e.excel_id
+                  WHERE p.user_id = ?
+                  ORDER BY createdAt DESC`;
 
       const values = [uid];
 
