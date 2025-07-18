@@ -55,6 +55,7 @@ class PredictionController {
   }
 
   static async predictMultiplePrices(req, res, next) {
+    // TODO: Validar que el archivo que se recibe es un Excel
     try {
       const { uid } = req.token;
 
@@ -67,6 +68,11 @@ class PredictionController {
       const rows = utils.sheet_to_json(sheet);
 
       const firstRow = rows[0];
+
+      // TODO: Hacer que el back revise que los valores de cada columna sean los correctos -> En especial de neighborhood y overallQual
+      // TODO: Luego validar que el excel solo contenga las columnas solicitadas
+      // TODO: Hacer que desde un comienzo las columnas que vienen pasen por el .trim() para quitarle los espacios, y estos valores resultantes para las nuevas columans son los que tendré de manera fija hasta el final
+      console.log(firstRow);
 
       if (!firstRow) {
         const error = new Error("El archivo excel está vacío.");
@@ -153,13 +159,18 @@ class PredictionController {
   static async listAll(req, res, next) {
     try {
       const { uid } = req.token;
+      // const uid = "hmKTa1LsxpeFqpxTYoY0zEIjXk93"; // Para pruebas
 
-      const predictions = await PredictionModel.listAll({ uid });
+      let { limit } = req.query;
+
+      limit = limit && Number(limit) ? Number(limit) : undefined;
+
+      const predictionResults = await PredictionModel.listAll({ uid, limit });
 
       res.status(200).json({
         success: true,
         message: "Predicciones realizadas con éxito.",
-        data: predictions,
+        data: predictionResults,
       });
     } catch (error) {
       console.error(

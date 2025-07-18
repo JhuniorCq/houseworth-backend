@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import pool from "../config/db.js";
+import { groupPredictions } from "../utils/predictions.js";
 
 class PredictionModel {
   static async predictPrice({
@@ -54,6 +55,7 @@ class PredictionModel {
       const [predictionDate, predictionTime] = createdAt.split(" ");
 
       return {
+        id: predictionInsert.insertId,
         price,
         grLivArea,
         garageCars,
@@ -65,6 +67,7 @@ class PredictionModel {
         isLuxury: !!isLuxury,
         predictionDate,
         predictionTime,
+        excelId: null, // No hay excelId para predicciones individuales
       };
     } catch (error) {
       console.error("Error en predictPrice de prediction.model.js: ", error);
@@ -129,10 +132,11 @@ class PredictionModel {
 
       await connection.commit();
 
-      const resultsPredictions = predictionData.map((p) => {
+      const resultsPredictions = predictionData.map((p, i) => {
         const [predictionDate, predictionTime] = p.createdAt.split(" ");
 
         return {
+          id: insertResult[i][0].insertId,
           price: p.price,
           grLivArea: p.grLivArea,
           garageCars: p.garageCars,
@@ -144,6 +148,7 @@ class PredictionModel {
           isLuxury: !!p.isLuxury,
           predictionDate,
           predictionTime,
+          excelId, // El excelId es el mismo para todas las predicciones
         };
       });
 
@@ -165,9 +170,10 @@ class PredictionModel {
     }
   }
 
-  static async listAll({ uid }) {
+  static async listAll({ uid, limit }) {
     try {
-      const query = `SELECT 
+      let query = `SELECT
+                      prediction_id AS id, 
                       price,
                       gr_liv_area AS grLivArea,
                       garage_cars AS garageCars,
@@ -177,25 +183,20 @@ class PredictionModel {
                       neighborhood AS neighborhood,
                       is_modern AS isModern,
                       is_luxury AS isLuxury,
-                      created_at AS createdAt
+                      created_at AS createdAt,
+                      excel_id AS excelId
                     FROM prediction 
                     WHERE user_id = ?
                     ORDER BY createdAt DESC`;
 
       const values = [uid];
 
-      const [result] = await pool.query(query, values);
+      if (limit) {
+        query += " LIMIT ?";
+        values.push(limit);
+      }
 
-      const [additionalResult] = await pool.query(
-        `
-          SELECT
-            COUNT(*) AS total_predictions,
-            COUNT(CASE WHEN p.excel_id IS NULL THEN 1 END) AS simple_predictions,
-            COALESCE(SUM(CASE WHEN p.excel_id IS NOT NULL THEN 1 END), 0) AS multiple_predictions
-          FROM prediction p
-          WHERE p.user_id = ?`,
-        [uid]
-      );
+      const [result] = await pool.query(query, values);
 
       const [totalAmountResult] = await pool.query(
         "SELECT COUNT(*) AS totalAmount FROM prediction WHERE user_id = ?",
@@ -230,6 +231,21 @@ class PredictionModel {
           predictionTime,
         };
       });
+
+      // ******
+      console.log(groupPredictions(predictions));
+      // console.log(
+      //   groupPredictions(predictions).map((p) => ({
+      //     predictions: JSON.stringify(p.predictions),
+      //   }))
+      // );
+      // ******
+
+      // IMPORTANTE: Ver como solucionar cuando se envía un valor para el LIMIT, porque ahí si se especifica un límite X y eso hace que se me traigan solo X predicciones de un excel de Y + Z predicciones, puede generar problemas al agrupar las predicciones de un excel, ya que no se traen todas las predicciones de ese excel y por lo tanto no se agrupan correctamente.
+
+      // DATO: Si uso lo que retorna groupPredictions() -> Debo cambiar este "predictions" de este return por "predictionResults"
+
+      // TODO -> SE CANCELA TODOOOOOOOOOOOO :3 , creo que mejor dejo lo que ya tengo y en el front hago que al Clickear en el HISTORIAL en una predicción que forma parte de UNA MÚLTIPLE, pues me lleve a la vista de los RESULTADOS DE UNA PREDICCIÓN MÚLTIPLE -> y lo que haría seria que al clickear coger su excelId y obtener a todos las predicciones en el front que tenga ese mismo excelId ... AUNQUEEEE MUCHO MEJOR -> PUEDO CREAR UN ENDPOINT en mi back para obtener todas las predicciones de una predicciones muñtiple en bae a su excelId y de igual manera para obtner a UN PREDICCION SIMPLE
 
       return {
         predictions,

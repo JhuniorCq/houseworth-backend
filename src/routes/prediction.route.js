@@ -12,6 +12,6 @@ router.post(
   upload.single("excelFile"),
   PredictionController.predictMultiplePrices
 );
-router.get("/", verifyFirebaseToken, PredictionController.listAll);
+router.get("/", PredictionController.listAll);
 
 export default router;
